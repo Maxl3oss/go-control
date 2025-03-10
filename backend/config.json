@@ -1,0 +1,29 @@
+{
+    "sites": [{
+            "site_title": "SMALLERP_API",
+            "site_remark": "SMALLERP API",
+            "site_command": "dotnet publish",
+            "site_folder": "C:\\GitHcProject\\smallerp-api",
+            "site_clone": "C:\\GitHcProject\\smallerp-api\\bin\\Release\\net8.0\\*.*",
+            "site_deploy": "C:\\inetpub\\wwwroot\\SMALLERP_API",
+            "web_url": "http://43.229.149.77:6017/swagger/index.html",
+            "git_repository": "https://bitbucket.org/HC-DEVS/smallerp-api.git",
+            "git_branch": "develop",
+            "git_token": "https://x-token-auth:ATCTT3xFfGN0vTmOmK_zMPljFpKvvmXFsVAPF0XSPbtstymoczjkCvLb1ortmo9wHZGwRKlrcdvn1QxiCy3hnLx90bHIR5oW76PPkfoCoULXdBhCUXiUwQSGoCg4AgKs5V9WUCHwxzm0H-_9D2VYam8f0VQRfcckbO9c5DzuaLoxubvNBmEJrgw=85240B1A@bitbucket.org/HC-DEVS/smallerp-api.git",
+            "type": ".net"
+        },
+        {
+            "site_title": "SMALLERP_WEB",
+            "site_remark": "SMALLERP WEB",
+            "site_command": "npm run build",
+            "site_folder": "C:\\GitHcProject\\smallerp-web",
+            "site_clone": "C:\\GitHcProject\\smallerp-web\\dist\\*.*",
+            "site_deploy": "C:\\TestClone\\smallerp-web",
+            "web_url": "http://43.229.149.77:8030/",
+            "git_repository": "https://bitbucket.org/HC-DEVS/smallerp-web.git",
+            "git_branch": "develop",
+            "git_token": "https://x-token-auth:ATCTT3xFfGN0hagIj3pKYYC5UZFcVlmJKcRGc8YxOkJfBPHcYKq8IGro1_5TomJpWOHJNiNndkCqTRcZzBHaqY2nt5UHXWMeUIdz9Sc8HJeMaqgTfn3iJ_XwJ5MN-BiF1S-J53heZ848iCByxD-fgZgsG6nOGhc1-hOCqESEfv40B4p9vV4XdGg=1AE12865@bitbucket.org/HC-DEVS/smallerp-web.git",
+            "type": "react"
+        }
+    ]
+}

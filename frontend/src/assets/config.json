@@ -1,0 +1,29 @@
+{
+    "sites": [{
+            "site_title": "SMALLERP_API",
+            "site_remark": "SMALLERP API",
+            "site_command": "dotnet publish",
+            "site_folder": "C:\\laragon\\www\\smallerp-api",
+            "site_clone": "C:\\laragon\\www\\smallerp-api\\bin\\Release\net8.0\\*.*",
+            "site_deploy": "C:\\laragon\\www\\web-build",
+            "web_url": "http://43.229.149.77:6017/swagger/index.html",
+            "git_repository": "smallerp-api",
+            "git_branch": "develop",
+            "git_token": "",
+            "type": ".net"
+        },
+        {
+            "site_command": "bun run build",
+            "site_title": "SMALLERP_Web",
+            "site_remark": "SMALLERP WEB",
+            "site_folder": "D:\\hugcode\\smallerp-web",
+            "site_clone": "D:\\hugcode\\smallerp-web\\dist\\*.*",
+            "site_deploy": "C:\\laragon\\www\\web-build",
+            "web_url": "http://43.229.149.77:8030/",
+            "git_repository": "smallerp-web",
+            "git_branch": "develop",
+            "git_token": "",
+            "type": "react"
+        }
+    ]
+}
