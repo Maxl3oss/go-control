@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -30,6 +32,7 @@ type Site struct {
 	GitToken      string `json:"git_token"`
 	SiteClone     string `json:"site_clone"`
 	SiteDeploy    string `json:"site_deploy"`
+	Type          string `json:"type"`
 }
 
 func loadConfig(configFile string) (*Config, error) {
@@ -84,12 +87,20 @@ func main() {
 		siteFolder := site.SiteFolder
 		siteCommand := site.SiteCommand
 
+		router.POST(fmt.Sprintf("/api/%s/npm-install", siteTitle), func(c *gin.Context) {
+			c.Header("Content-Type", "text/event-stream")
+			c.Header("Cache-Control", "no-cache")
+			c.Header("Connection", "keep-alive")
+
+			cmd := fmt.Sprintf("npm install")
+			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("NPM Install %s", siteTitle))
+		})
+
 		router.POST(fmt.Sprintf("/api/%s/build", siteTitle), func(c *gin.Context) {
 			c.Header("Content-Type", "text/event-stream")
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			// Run the build process and stream logs
 			runCommandWithStream(c, siteCommand, siteFolder, fmt.Sprintf("Build %s", siteTitle))
 		})
 
@@ -98,7 +109,6 @@ func main() {
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			// Run the build process and stream logs
 			cmd := fmt.Sprintf("git pull %s %s", site.GitToken, site.GitBranch)
 			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Pull %s", siteTitle))
 		})
@@ -108,7 +118,6 @@ func main() {
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			// Run the build process and stream logs
 			cmd := fmt.Sprintf(`appcmd stop site /site.name:%s`, siteTitle)
 			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
 		})
@@ -118,7 +127,6 @@ func main() {
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			// Run the build process and stream logs
 			cmd := fmt.Sprintf(`appcmd start site /site.name:%s`, siteTitle)
 			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
 		})
@@ -128,7 +136,6 @@ func main() {
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			// Run the build process and stream logs
 			cmd := fmt.Sprintf("xcopy /s /y %s %s", site.SiteClone, site.SiteDeploy)
 			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
 		})
@@ -138,17 +145,66 @@ func main() {
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			// Define the list of commands
-			commands := []string{
-				fmt.Sprintf("git pull %s %s", site.GitToken, site.GitBranch),
-				siteCommand,
-				// "cp -r build /path/to/deploy",
+			removeFilesCommand := ""
+			if site.Type == ".net" {
+				removeFilesCommand = fmt.Sprintf(`powershell -Command "Start-Sleep -s 2; Remove-Item -Recurse -Force '%s\*'"`, site.SiteDeploy)
 			}
 
-			// Run the commands in sequence
+			// Define the list of commands
+			commands := []string{
+				fmt.Sprintf(`appcmd stop site /site.name:%s`, siteTitle),
+				fmt.Sprintf("git pull %s %s", site.GitToken, site.GitBranch),
+				siteCommand,
+				removeFilesCommand,
+				fmt.Sprintf("xcopy /s /y %s %s", site.SiteClone, site.SiteDeploy),
+				fmt.Sprintf(`appcmd start site /site.name:%s`, siteTitle),
+			}
+
 			runMultiCommandsWithStream(c, commands, siteFolder, fmt.Sprintf("Deploy %s", siteTitle), site.GitToken)
 		})
 	}
+
+	router.POST(fmt.Sprintf("/api/upload"), func(c *gin.Context) {
+		// Check if the upload directory exists, if not, create it
+		if _, err := os.Stat("./upload"); os.IsNotExist(err) {
+			// Create the upload directory if it doesn't exist
+			err := os.MkdirAll("./upload", os.ModePerm)
+			if err != nil {
+				// Log the error and return a response if directory creation fails
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create upload directory: %v", err)})
+				return
+			}
+		}
+
+		// Parse the uploaded file
+		file, header, err := c.Request.FormFile("file")
+		log.Println(file)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to get file: %v", err)})
+			return
+		}
+		defer file.Close()
+
+		// Define the target path for saving the file
+		filePath := filepath.Join("./upload", header.Filename)
+
+		// Create the destination file
+		outFile, err := os.Create(filePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
+			return
+		}
+		defer outFile.Close()
+
+		// Copy uploaded file data to the destination
+		_, err = io.Copy(outFile, file)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to write file: %v", err)})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "path": filePath})
+	})
 
 	// get all menu
 	router.GET("/api/get-site", func(c *gin.Context) {
