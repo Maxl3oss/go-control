@@ -6,6 +6,7 @@
   import {
     fetchBuild,
     fetchDeploy,
+    fetchInstall,
     fetchPull,
     fetchStartService,
     fetchStopService,
@@ -26,12 +27,12 @@
   let resData: ISiteItem | undefined = $state(undefined);
   let logs: LogEntry[] = $state([]);
   let loading = $state(false);
-  const handlePull = async (repo: string) => {
+
+  const handleInstall = async (repo: string) => {
     loading = true;
-    await fetchPull(
+    await fetchInstall(
       repo,
       async (msg) => {
-        // console.log("SSE Message:", msg);
         logs = [
           ...logs,
           {
@@ -42,12 +43,35 @@
           },
         ];
         await tick();
-      }, // For "data:" events
+      },
       async (row) => {
-        // console.log("Git Output:", row);
         logs = [...logs, ...parseLogs(row, logs.length)];
         await tick();
-      } // For raw git logs
+      }
+    );
+    loading = false;
+  };
+
+  const handlePull = async (repo: string) => {
+    loading = true;
+    await fetchPull(
+      repo,
+      async (msg) => {
+        logs = [
+          ...logs,
+          {
+            type: "system",
+            id: logs.length + 1,
+            message: "SSE Message:" + msg,
+            timestamp: new Date(),
+          },
+        ];
+        await tick();
+      },
+      async (row) => {
+        logs = [...logs, ...parseLogs(row, logs.length)];
+        await tick();
+      }
     );
     loading = false;
   };
@@ -57,7 +81,6 @@
     await fetchBuild(
       repo,
       async (msg) => {
-        // console.log("SSE Message:", msg);
         logs = [
           ...logs,
           {
@@ -68,12 +91,11 @@
           },
         ];
         await tick();
-      }, // For "data:" events
+      },
       async (row) => {
-        // console.log("Git Output:", row);
         logs = [...logs, ...parseLogs(row, logs.length)];
         await tick();
-      } // For raw git logs
+      }
     );
     loading = false;
   };
@@ -83,7 +105,6 @@
     await fetchDeploy(
       repo,
       async (msg) => {
-        // console.log("SSE Message:", msg);
         logs = [
           ...logs,
           {
@@ -94,12 +115,11 @@
           },
         ];
         await tick();
-      }, // For "data:" events
+      },
       async (row) => {
-        // console.log("Git Output:", row);
         logs = [...logs, ...parseLogs(row, logs.length)];
         await tick();
-      } // For raw git logs
+      }
     );
     loading = false;
   };
@@ -109,7 +129,6 @@
     await fetchStartService(
       repo,
       async (msg) => {
-        // console.log("SSE Message:", msg);
         logs = [
           ...logs,
           {
@@ -120,12 +139,11 @@
           },
         ];
         await tick();
-      }, // For "data:" events
+      },
       async (row) => {
-        // console.log("Git Output:", row);
         logs = [...logs, ...parseLogs(row, logs.length)];
         await tick();
-      } // For raw git logs
+      }
     );
     loading = false;
   };
@@ -135,7 +153,6 @@
     await fetchStopService(
       repo,
       async (msg) => {
-        // console.log("SSE Message:", msg);
         logs = [
           ...logs,
           {
@@ -146,12 +163,11 @@
           },
         ];
         await tick();
-      }, // For "data:" events
+      },
       async (row) => {
-        // console.log("Git Output:", row);
         logs = [...logs, ...parseLogs(row, logs.length)];
         await tick();
-      } // For raw git logs
+      }
     );
     loading = false;
   };
@@ -190,6 +206,15 @@
       </div>
       <Button
         disabled={loading}
+        class="bg-[#488aec] mb-5 cursor-pointer disabled:cursor-progress"
+        type="button"
+        onclick={() => handlePull(resData?.site_title ?? "")}
+      >
+        AUTO-DEPLOY
+      </Button>
+
+      <Button
+        disabled={loading}
         class="mb-5 cursor-pointer disabled:cursor-progress"
         color="teal"
         type="button"
@@ -197,6 +222,18 @@
       >
         PULL
       </Button>
+
+      {#if resData?.type === "react"}
+        <Button
+          disabled={loading}
+          class="mb-5 cursor-pointer disabled:cursor-progress"
+          color="indigo"
+          type="button"
+          onclick={() => handleInstall(resData?.site_title ?? "")}
+        >
+        INSTALL
+      </Button>
+      {/if}
 
       <Button
         disabled={loading}

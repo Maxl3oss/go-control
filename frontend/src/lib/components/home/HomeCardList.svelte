@@ -33,12 +33,16 @@
     Site
   </h3>
 
-  <a href="/form" class:site-active={siteTitle === "form"} class="sites-item">
+  <!-- <a href="/form" class:site-active={siteTitle === "form"} class="sites-item">
     <div class="w-full flex justify-center py-2 rounded-sm bg-orange-700">
       ADD SITE
     </div>
+  </a> -->
+  <a href="/upload" class:site-active={siteTitle === "form"} class="sites-item">
+    <div class="w-full flex justify-center py-2 rounded-sm bg-orange-700">
+      UpLoad 
+    </div>
   </a>
-
   {#each dataSiteTitle as item}
     <a
       href={item.site_title}

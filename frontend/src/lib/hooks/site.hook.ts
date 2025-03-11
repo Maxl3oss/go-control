@@ -14,6 +14,27 @@ export const fetchGetSite = async () => {
   }
 };
 
+export const uploadFile = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${BASE_URL}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const resData = await response.json();
+    return resData;
+  } catch (err) {
+    return null;
+  }
+};
+
 const eventStreamHelper = async (path: string, repo: string, onMessage: (msg: string) => void, onRawOutput: (msg: string) => void) => {
   try {
     const response = await fetch(`${BASE_URL}/${repo.toLowerCase()}/${path}`, {
@@ -58,6 +79,10 @@ const eventStreamHelper = async (path: string, repo: string, onMessage: (msg: st
   } catch (err) {
     console.error('Error fetching data:', err);
   }
+};
+
+export const fetchInstall = async (repo: string, onMessage: (msg: string) => void, onRawOutput: (msg: string) => void) => {
+  return eventStreamHelper('npm-install', repo, onMessage, onRawOutput);
 };
 
 export const fetchPull = async (repo: string, onMessage: (msg: string) => void, onRawOutput: (msg: string) => void) => {
