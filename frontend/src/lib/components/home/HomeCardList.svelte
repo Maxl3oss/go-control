@@ -2,6 +2,8 @@
   import { fetchGetSite } from "$/lib/hooks/site.hook";
   import { siteStore } from "$/lib/store/siteStore";
   import type { ISiteItem } from "$/lib/types/base";
+  import { userAuth } from "$/lib/utils/auth";
+  import { goto } from "$app/navigation";
 
   const { siteTitle } = $props();
   let dataSiteTitle: ISiteItem[] = $state([]);
@@ -22,16 +24,37 @@
 
     return unsubscribe;
   });
+
+  $effect(() => {
+    const unsubscribe = userAuth.subscribe(({ isAuthenticated, expiresAt, token }) => {
+          console.log(isAuthenticated, expiresAt, token)
+      if (!isAuthenticated) {
+        if (window.location.pathname !== "/login") {
+          goto("/login");
+        }
+      }
+
+      if (expiresAt && expiresAt <= Date.now()) {
+        if (window.location.pathname !== "/login") {
+          goto("/login");
+        }
+      }
+    });
+    
+    return unsubscribe;
+  });
 </script>
 
 <div
   class="h-screen fixed w-56 rounded-none bg-gray-800 border border-r-0 border-t-0 border-gray-700"
 >
-  <h3
-    class="p-1 pt-6 text-center text-lg font-medium text-gray-900 dark:text-white !rounded-b-none"
-  >
-    Site
-  </h3>
+  <a href="/">
+    <h3
+      class="p-1 pt-6 text-center text-lg font-medium text-gray-900 dark:text-white !rounded-b-none"
+    >
+      HC-PIPELINE
+    </h3>
+  </a>
 
   <!-- <a href="/form" class:site-active={siteTitle === "form"} class="sites-item">
     <div class="w-full flex justify-center py-2 rounded-sm bg-orange-700">
@@ -40,7 +63,7 @@
   </a> -->
   <a href="/upload" class:site-active={siteTitle === "form"} class="sites-item">
     <div class="w-full flex justify-center py-2 rounded-sm bg-orange-700">
-      UpLoad 
+      UpLoad
     </div>
   </a>
   {#each dataSiteTitle as item}

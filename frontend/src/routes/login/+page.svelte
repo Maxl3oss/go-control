@@ -1,30 +1,46 @@
 <script lang="ts">
   import "$/app.css";
-  
-  let email = "";
-  let password = "";
-  let showPassword = false;
+  import { login, logout } from "$/lib/utils/auth";
+  import { goto } from "$app/navigation";
+  import { Button } from "svelte-5-ui-lib";
+  import toast, { Toaster } from "svelte-french-toast";
 
-  function handleSubmit() {
+  let formData = $state({
+    email: "",
+    password: "",
+    showPassword: false,
+  })
+
+  const handleSubmit = async () => {
     // Login logic
-    console.log("Login attempt:", { email, password });
-  }
+    const res = await login(formData.email, formData.password);
+
+    if (res?.token) {
+      goto("/")
+    } else if(res?.error) {
+      toast.error(res?.error || "");
+    }
+  };
+
+  $effect(() => {
+    logout();
+  })
 </script>
 
 <div class="flex items-center justify-center min-h-screen bg-gray-100 p-4">
   <div class="w-full max-w-md bg-white shadow-md rounded-lg p-6">
-    <h2 class="text-2xl text-center mb-6">Login</h2>
+    <h2 class="text-3xl text-center mb-6">Login</h2>
 
-    <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+    <form onsubmit={handleSubmit} class="space-y-4">
       <div>
         <label for="email" class="block text-sm font-medium mb-2">Email</label>
         <input
           type="email"
           id="email"
-          bind:value={email}
+          bind:value={formData.email}
           placeholder="Enter your email"
           required
-          class="w-full px-3 py-2 border rounded-md"
+          class="w-full px-3 py-2 border rounded-md border-gray-300 ring-0"
         />
       </div>
 
@@ -33,19 +49,19 @@
           >Password</label
         >
         <input
-          type={showPassword ? "text" : "password"}
+          type={formData.showPassword ? "text" : "password"}
           id="password"
-          bind:value={password}
+          bind:value={formData.password}
           placeholder="Enter your password"
           required
-          class="w-full px-3 py-2 border rounded-md pr-10"
+          class="w-full px-3 py-2 border rounded-md pr-10 border-gray-300"
         />
         <button
           type="button"
-          on:click={() => (showPassword = !showPassword)}
+          onclick={() => (formData.showPassword = !formData.showPassword)}
           class="absolute right-2 top-9 text-gray-500"
         >
-          {#if showPassword}
+          {#if formData.showPassword}
             <span>Hide</span>
           {:else}
             <span>Show</span>
@@ -53,38 +69,17 @@
         </button>
       </div>
 
-      <div class="flex items-center justify-between">
-        <div class="flex items-center">
-          <input
-            type="checkbox"
-            id="remember-me"
-            class="h-4 w-4 text-indigo-600 rounded"
-          />
-          <label for="remember-me" class="ml-2 text-sm">Remember me</label>
-        </div>
-        <a href="" class="text-sm text-indigo-600 hover:text-indigo-500">
-          Forgot password?
-        </a>
-      </div>
-
-      <button
+      <Button
         type="submit"
-        class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700"
+        class="mt-5 w-full cursor-pointer disabled:cursor-progress"
+        color="red"
       >
         Sign In
-      </button>
-
-      <div class="text-center mt-4">
-        <p class="text-sm text-gray-600">
-          Don't have an account?
-          <a href="" class="text-indigo-600 hover:text-indigo-500">
-            Sign up
-          </a>
-        </p>
-      </div>
+      </Button>
     </form>
   </div>
 </div>
+<Toaster position="bottom-right" />
 
 <style>
   /* Additional custom styles if needed */

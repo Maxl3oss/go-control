@@ -4,6 +4,7 @@
   } from "$/lib/components/base/LogDisplay.svelte";
   import HomeCardList from "$/lib/components/home/HomeCardList.svelte";
   import {
+    fetchAutoDeploy,
     fetchBuild,
     fetchDeploy,
     fetchInstall,
@@ -14,14 +15,8 @@
   import { siteStore } from "$/lib/store/siteStore";
   import type { ISiteItem } from "$/lib/types/base";
   import { parseLogs } from "$/lib/utils/helper.js";
-  import {
-    faEarthAsia,
-    faFolder,
-    faFolderOpen,
-  } from "@fortawesome/free-solid-svg-icons";
   import { tick } from "svelte";
   import { Button } from "svelte-5-ui-lib";
-  import Fa from "svelte-fa";
 
   let { data }: { data: { slug: string } } = $props();
   let resData: ISiteItem | undefined = $state(undefined);
@@ -31,6 +26,30 @@
   const handleInstall = async (repo: string) => {
     loading = true;
     await fetchInstall(
+      repo,
+      async (msg) => {
+        logs = [
+          ...logs,
+          {
+            type: "system",
+            id: logs.length + 1,
+            message: "SSE Message:" + msg,
+            timestamp: new Date(),
+          },
+        ];
+        await tick();
+      },
+      async (row) => {
+        logs = [...logs, ...parseLogs(row, logs.length)];
+        await tick();
+      }
+    );
+    loading = false;
+  };
+
+  const handleAutoDeploy = async (repo: string) => {
+    loading = true;
+    await fetchAutoDeploy(
       repo,
       async (msg) => {
         logs = [
@@ -184,10 +203,10 @@
   <HomeCardList siteTitle={data.slug} />
   <div class="min-h-screen ml-56 w-full inline-block pl-0 p-5 bg-gray-800">
     <div class="h-full w-full p-6 rounded-4xl bg-gray-50">
-      <h1 class="text-2xl text-orange-600 font-bold">
+      <h1 class="text-2xl text-orange-600 font-bold mb-10">
         {resData?.site_title.toLocaleUpperCase()}
       </h1>
-      <div class="grid gap-1 my-5">
+      <!-- <div class="grid gap-1 my-5">
         <div class="flex items-center gap-3">
           <Fa icon={faFolder} />
           <p>{resData?.site_folder}</p>
@@ -196,19 +215,18 @@
           <Fa icon={faFolderOpen} />
           <p>{resData?.site_deploy}</p>
         </div>
-        <!-- <i class="fa-solid fa-earth-asia"></i> -->
         <div class="flex items-center gap-3">
           <Fa icon={faEarthAsia} />
           <a href={resData?.git_repository} class="text-orange-600"
             >{resData?.git_repository}</a
           >
         </div>
-      </div>
+      </div> -->
       <Button
         disabled={loading}
         class="bg-[#488aec] mb-5 cursor-pointer disabled:cursor-progress"
         type="button"
-        onclick={() => handlePull(resData?.site_title ?? "")}
+        onclick={() => handleAutoDeploy(resData?.site_title ?? "")}
       >
         AUTO-DEPLOY
       </Button>

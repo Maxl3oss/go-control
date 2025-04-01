@@ -31,7 +31,7 @@ export const uploadFile = async (file: File) => {
     const resData = await response.json();
     return resData;
   } catch (err) {
-    return null;
+    return err;
   }
 };
 
@@ -77,7 +77,7 @@ const eventStreamHelper = async (path: string, repo: string, onMessage: (msg: st
       }
     }
   } catch (err) {
-    console.error('Error fetching data:', err);
+    return err
   }
 };
 
@@ -103,4 +103,8 @@ export const fetchDeploy = async (repo: string, onMessage: (msg: string) => void
 
 export const fetchStartService = async (repo: string, onMessage: (msg: string) => void, onRawOutput: (msg: string) => void) => {
   return eventStreamHelper('start-service', repo, onMessage, onRawOutput);
+};
+
+export const fetchAutoDeploy = async (repo: string, onMessage: (msg: string) => void, onRawOutput: (msg: string) => void) => {
+  return eventStreamHelper('auto-deploy', repo, onMessage, onRawOutput);
 };

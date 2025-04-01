@@ -3,18 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go-control/dto"
+	"go-control/helper"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Config struct for JSON configuration
@@ -93,7 +94,7 @@ func main() {
 			c.Header("Connection", "keep-alive")
 
 			cmd := fmt.Sprintf("npm install")
-			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("NPM Install %s", siteTitle))
+			helper.RunCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("NPM Install %s", siteTitle))
 		})
 
 		router.POST(fmt.Sprintf("/api/%s/build", siteTitle), func(c *gin.Context) {
@@ -101,7 +102,7 @@ func main() {
 			c.Header("Cache-Control", "no-cache")
 			c.Header("Connection", "keep-alive")
 
-			runCommandWithStream(c, siteCommand, siteFolder, fmt.Sprintf("Build %s", siteTitle))
+			helper.RunCommandWithStream(c, siteCommand, siteFolder, fmt.Sprintf("Build %s", siteTitle))
 		})
 
 		router.POST(fmt.Sprintf("/api/%s/pull", siteTitle), func(c *gin.Context) {
@@ -110,7 +111,7 @@ func main() {
 			c.Header("Connection", "keep-alive")
 
 			cmd := fmt.Sprintf("git pull %s %s", site.GitToken, site.GitBranch)
-			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Pull %s", siteTitle))
+			helper.RunCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Pull %s", siteTitle))
 		})
 
 		router.POST(fmt.Sprintf("/api/%s/stop-service", siteTitle), func(c *gin.Context) {
@@ -119,7 +120,7 @@ func main() {
 			c.Header("Connection", "keep-alive")
 
 			cmd := fmt.Sprintf(`appcmd stop site /site.name:%s`, siteTitle)
-			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
+			helper.RunCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
 		})
 
 		router.POST(fmt.Sprintf("/api/%s/start-service", siteTitle), func(c *gin.Context) {
@@ -128,7 +129,7 @@ func main() {
 			c.Header("Connection", "keep-alive")
 
 			cmd := fmt.Sprintf(`appcmd start site /site.name:%s`, siteTitle)
-			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
+			helper.RunCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
 		})
 
 		router.POST(fmt.Sprintf("/api/%s/deploy", siteTitle), func(c *gin.Context) {
@@ -137,7 +138,7 @@ func main() {
 			c.Header("Connection", "keep-alive")
 
 			cmd := fmt.Sprintf("xcopy /s /y %s %s", site.SiteClone, site.SiteDeploy)
-			runCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
+			helper.RunCommandWithStream(c, cmd, siteFolder, fmt.Sprintf("Deploy %s", siteTitle))
 		})
 
 		router.POST(fmt.Sprintf("/api/%s/auto-deploy", siteTitle), func(c *gin.Context) {
@@ -148,9 +149,13 @@ func main() {
 			removeFilesCommand := ""
 			if site.Type == ".net" {
 				removeFilesCommand = fmt.Sprintf(`powershell -Command "Start-Sleep -s 2; Remove-Item -Recurse -Force '%s\*'"`, site.SiteDeploy)
+				err := helper.KillProcessesByWindowTitle(siteTitle)
+				if err != nil {
+					c.SSEvent("error", fmt.Sprintf("Failed to kill existing processes: %v", err))
+					return
+				}
 			}
 
-			// Define the list of commands
 			commands := []string{
 				fmt.Sprintf(`appcmd stop site /site.name:%s`, siteTitle),
 				fmt.Sprintf("git pull %s %s", site.GitToken, site.GitBranch),
@@ -160,7 +165,7 @@ func main() {
 				fmt.Sprintf(`appcmd start site /site.name:%s`, siteTitle),
 			}
 
-			runMultiCommandsWithStream(c, commands, siteFolder, fmt.Sprintf("Deploy %s", siteTitle), site.GitToken)
+			helper.RunMultiCommandsWithStream(c, commands, siteFolder, fmt.Sprintf("Deploy %s", siteTitle), site.GitToken)
 		})
 	}
 
@@ -213,159 +218,34 @@ func main() {
 		})
 	})
 
+	router.POST("/api/login", func(c *gin.Context) {
+		var user dto.UserLoginDTO
+		json.NewDecoder(c.Request.Body).Decode(&user)
+
+		if user.Email == "" || user.Password == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Email and password are required"})
+			return
+		}
+		if user.Email != "admin@hugcode.co.th" || user.Password != "hc-password" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+			return
+		}
+
+		// Generate JWT
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"email": user.Email,
+			"exp":   time.Now().Add(time.Hour * 24).Unix(),
+		})
+		secretKey := []byte("h5G8sK3pQ1zY9vM2wX7dT6aJ0cL4NqR")
+		tokenString, _ := token.SignedString(secretKey)
+
+		json.NewEncoder(c.Writer).Encode(map[string]string{"token": tokenString})
+	})
+
 	// Start the server
 	port := "8032"
 	if os.Getenv("ASPNETCORE_PORT") != "" { // get environment variable set by ACNM
 		port = os.Getenv("ASPNETCORE_PORT")
 	}
 	log.Fatal(router.Run(":" + port))
-}
-
-func runCommandWithStream(c *gin.Context, commandStr string, workingDir string, action string) {
-	var shell, flag string
-	if runtime.GOOS == "windows" {
-		shell, flag = "cmd", "/C"
-	} else {
-		shell, flag = "sh", "-c"
-	}
-
-	command := exec.Command(shell, flag, fmt.Sprintf("cd %s && %s", workingDir, commandStr))
-	stdoutPipe, err := command.StdoutPipe()
-	if err != nil {
-		log.Printf("[%s] Error creating stdout pipe: %v", action, err)
-		c.SSEvent("error", fmt.Sprintf("[%s] Failed to initialize output streaming", action))
-		c.Writer.Flush()
-		return
-	}
-	stderrPipe, err := command.StderrPipe()
-	if err != nil {
-		log.Printf("[%s] Error creating stderr pipe: %v", action, err)
-		c.SSEvent("error", fmt.Sprintf("[%s] Failed to initialize error streaming", action))
-		c.Writer.Flush()
-		return
-	}
-
-	if err := command.Start(); err != nil {
-		log.Printf("[%s] Command failed to start: %v", action, err)
-		c.SSEvent("error", fmt.Sprintf("[%s] Failed to start command", action))
-		c.Writer.Flush()
-		return
-	}
-
-	c.SSEvent("status", fmt.Sprintf("[%s] Command started successfully", action))
-	c.Writer.Flush()
-
-	done := make(chan bool)
-	go func() {
-		if _, err := io.Copy(c.Writer, stdoutPipe); err != nil {
-			log.Printf("[%s] Error streaming stdout: %v", action, err)
-		}
-		done <- true
-	}()
-	go func() {
-		if _, err := io.Copy(c.Writer, stderrPipe); err != nil {
-			log.Printf("[%s] Error streaming stderr: %v", action, err)
-		}
-		done <- true
-	}()
-
-	<-done
-	<-done
-
-	if err := command.Wait(); err != nil {
-		log.Printf("[%s] Command execution failed: %v", action, err)
-		c.SSEvent("error", fmt.Sprintf("[%s] Command execution failed: %v", action, err))
-		c.Writer.Flush()
-		return
-	}
-
-	c.SSEvent("done", fmt.Sprintf("[%s] Command executed successfully", action))
-	c.Writer.Flush()
-}
-
-func runMultiCommandsWithStream(c *gin.Context, commands []string, workingDir string, action string, hiddenCommand string) {
-	var shell, flag string
-	if runtime.GOOS == "windows" {
-		shell, flag = "cmd", "/C"
-	} else {
-		shell, flag = "sh", "-c"
-	}
-
-	for _, commandStr := range commands {
-		command := exec.Command(shell, flag, fmt.Sprintf("cd %s && %s", workingDir, commandStr))
-		showCommand := filterCommand(commandStr, hiddenCommand)
-
-		stdoutPipe, err := command.StdoutPipe()
-		if err != nil {
-			log.Printf("[%s] Error creating stdout pipe: %v", action, err)
-			c.SSEvent("error", fmt.Sprintf("[%s] Failed to initialize output streaming for command: %s", action, showCommand))
-			c.Writer.Flush()
-			return
-		}
-		stderrPipe, err := command.StderrPipe()
-		if err != nil {
-			log.Printf("[%s] Error creating stderr pipe: %v", action, err)
-			c.SSEvent("error", fmt.Sprintf("[%s] Failed to initialize error streaming for command: %s", action, showCommand))
-			c.Writer.Flush()
-			return
-		}
-
-		if err := command.Start(); err != nil {
-			log.Printf("[%s] Command failed to start: %v", action, err)
-			c.SSEvent("error", fmt.Sprintf("[%s] Failed to start command: %s", action, showCommand))
-			c.Writer.Flush()
-			return
-		}
-
-		c.SSEvent("status", fmt.Sprintf("[%s] Running command: %s", action, showCommand))
-		c.Writer.Flush()
-
-		done := make(chan bool)
-		go func() {
-			if _, err := io.Copy(c.Writer, stdoutPipe); err != nil {
-				log.Printf("[%s] Error streaming stdout for command: %s, %v", action, showCommand, err)
-			}
-			done <- true
-		}()
-		go func() {
-			if _, err := io.Copy(c.Writer, stderrPipe); err != nil {
-				log.Printf("[%s] Error streaming stderr for command: %s, %v", action, showCommand, err)
-			}
-			done <- true
-		}()
-
-		<-done
-		<-done
-
-		if err := command.Wait(); err != nil {
-			log.Printf("[%s] Command execution failed for command: %s, %v", action, showCommand, err)
-			c.SSEvent("error", fmt.Sprintf("[%s] Command execution failed for command: %s, %v", action, showCommand, err))
-			c.Writer.Flush()
-			return
-		}
-
-		c.SSEvent("done", fmt.Sprintf("[%s] Command executed successfully: %s", action, showCommand))
-		c.Writer.Flush()
-	}
-
-	c.SSEvent("done", fmt.Sprintf("[%s] All commands executed successfully", action))
-	c.Writer.Flush()
-}
-
-func filterCommand(commandStr, hiddenCommand string) string {
-	// Split the command string into parts
-	parts := strings.Split(commandStr, " ")
-
-	// Filter out the hiddenCommand
-	var filteredParts []string
-	for _, part := range parts {
-		if part != hiddenCommand {
-			filteredParts = append(filteredParts, part)
-		} else {
-			filteredParts = append(filteredParts, "********")
-		}
-	}
-
-	// Join the filtered parts back into a single string
-	return strings.Join(filteredParts, " ")
 }

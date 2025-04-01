@@ -1,21 +1,17 @@
 <script lang="ts">
   import "$/app.css";
-  import { page } from "$app/stores";
-  import {
-    uiHelpers
-  } from "svelte-5-ui-lib";
-  // import PlusPlaceholder from "../../../utils/PlusPlaceholder.svelte";
+    // import PlusPlaceholder from "../../../utils/PlusPlaceholder.svelte";
 
-  const spanClass = "flex-1 ms-3 whitespace-nowrap";
-  const demoSidebarUi = uiHelpers();
-  let isDemoOpen = $state(false);
-  const closeDemoSidebar = demoSidebarUi.close;
-  let activeUrl = $state("");
+  // const spanClass = "flex-1 ms-3 whitespace-nowrap";
+  // const demoSidebarUi = uiHelpers();
+  // let isDemoOpen = $state(false);
+  // const closeDemoSidebar = demoSidebarUi.close;
+  // let activeUrl = $state("");
 
-  $effect(() => {
-    isDemoOpen = demoSidebarUi.isOpen;
-    activeUrl = $page.url.pathname;
-  });
+  // $effect(() => {
+  //   isDemoOpen = demoSidebarUi.isOpen;
+  //   activeUrl = $page.url.pathname;
+  // });
 </script>
 
 <!-- <SidebarButton onclick={demoSidebarUi.toggle} class="mb-2" /> -->

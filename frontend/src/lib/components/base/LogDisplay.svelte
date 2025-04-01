@@ -14,7 +14,7 @@
     timestamp: Date;
   };
 
-  let element: HTMLDivElement | null = $state(null);
+  let element = $state<HTMLDivElement | null>(null);
   let { logs, loading } = $props<{ logs: LogEntry[]; loading: boolean }>();
   let dataLogs: LogEntry[] = $state([]);
 
@@ -33,6 +33,9 @@
 
   $effect(() => {
     dataLogs = logs;
+    setTimeout(() => {
+      scrollToBottom(element as HTMLDivElement);
+    }, 150)
   });
 </script>
 
