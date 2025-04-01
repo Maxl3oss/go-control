@@ -161,7 +161,7 @@ func main() {
 				fmt.Sprintf("git pull %s %s", site.GitToken, site.GitBranch),
 				siteCommand,
 				removeFilesCommand,
-				fmt.Sprintf("xcopy /s /y %s %s", site.SiteClone, site.SiteDeploy),
+				fmt.Sprintf("xcopy %s %s /K /D /H /Y", site.SiteClone, site.SiteDeploy),
 				fmt.Sprintf(`appcmd start site /site.name:%s`, siteTitle),
 			}
 

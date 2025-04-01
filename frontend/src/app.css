@@ -7,9 +7,13 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #222222; /* Track color */
+  background: transparent; /* Track color */
   opacity: 20%;
   border-radius: 2px;
+}
+
+::-webkit-scrollbar-track:hover {
+  background: #222222; /* Track color */
 }
 
 ::-webkit-scrollbar-thumb {
